@@ -18,7 +18,7 @@ export const PatientFormDefaultValues = {
   currentMedication: "",
   familyMedicalHistory: "",
   pastMedicalHistory: "",
-  identificationType: "Birth Certificate",
+  identificationType: "", 
   identificationNumber: "",
   identificationDocument: [],
   treatmentConsent: false,
@@ -27,55 +27,44 @@ export const PatientFormDefaultValues = {
 };
 
 export const IdentificationTypes = [
-  "Birth Certificate",
-  "Driver's License",
-  "Medical Insurance Card/Policy",
-  "Military ID Card",
-  "National Identity Card",
-  "Passport",
-  "Resident Alien Card (Green Card)",
-  "Social Security Card",
-  "State ID Card",
-  "Student ID Card",
-  "Voter ID Card",
+  "Vehicle Damage Photo",
+  "Laptop Damage Photo",
+  "Website Logo",
 ];
 
 export const Doctors = [
   {
-    image: "/assets/images/dr-green.png",
-    name: "John Green",
+    name: "Engine Oil Filter Change",
   },
   {
-    image: "/assets/images/dr-cameron.png",
-    name: "Leila Cameron",
+    name: "Brake Pad Repair",
   },
   {
-    image: "/assets/images/dr-livingston.png",
-    name: "David Livingston",
+    name: "Battery & Spark Pkug Replacement",
   },
   {
-    image: "/assets/images/dr-peter.png",
-    name: "Evan Peter",
+    name: "Air & A/C Filter Change",
   },
   {
-    image: "/assets/images/dr-powell.png",
-    name: "Jane Powell",
+    name: "Starter Motor & Alternator Replacement",
   },
   {
-    image: "/assets/images/dr-remirez.png",
-    name: "Alex Ramirez",
+    name: "Web Designing",
   },
   {
-    image: "/assets/images/dr-lee.png",
-    name: "Jasmine Lee",
+    name: "Web Development",
   },
   {
-    image: "/assets/images/dr-cruz.png",
-    name: "Alyana Cruz",
+    name: "Dashboard/Portal Development",
   },
   {
-    image: "/assets/images/dr-sharma.png",
-    name: "Hardik Sharma",
+    name: "Logo Creation",
+  },
+  {
+    name: "Social Media Posts/Reel Creation",
+  },
+  {
+    name: "Computer/IT Solutions",
   },
 ];
 

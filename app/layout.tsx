@@ -12,8 +12,8 @@ const fontSans = Plus_Jakarta_Sans({
 });
 
 export const metadata = {
-  title: "CarePulse",
-  description: "A healthcare management system!",
+  title: "JMAX Technical Services",
+  description: "An Auto Repair and Software Related Platform",
 } as Metadata; // use 'as Metadata' to keep type safety without parser errors
 
 export default function RootLayout({

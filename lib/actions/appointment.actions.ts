@@ -3,20 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { ID, Query } from "node-appwrite";
 
-import { Appointment } from "@/types/appwrite.types";
+import { Appointment, Patient } from "@/types/appwrite.types";
 
 import {
   APPOINTMENT_TABLE_ID,
   DATABASE_ID,
+  PATIENT_TABLE_ID,
   databases,
   messaging,
 } from "../appwrite.config";
+
 import { formatDateTime, parseStringify } from "../utils";
 
 //  CREATE APPOINTMENT
-export const createAppointment = async (
-  appointment: CreateAppointmentParams
-) => {
+export const createAppointment = async (appointment: CreateAppointmentParams) => {
   try {
     const newAppointment = await databases.createDocument(
       DATABASE_ID!,
@@ -47,11 +47,12 @@ export const getRecentAppointmentList = async () => {
       cancelledCount: 0,
     };
 
-    // ✅ Explicitly cast each document to Appointment
+    // Cast docs
     const appointmentDocs = appointments.documents.map(
       (doc) => doc as unknown as Appointment
     );
 
+    // Counts (your existing logic)
     const counts = appointmentDocs.reduce((acc, appointment) => {
       switch (appointment.status) {
         case "scheduled":
@@ -67,10 +68,56 @@ export const getRecentAppointmentList = async () => {
       return acc;
     }, initialCounts);
 
+    /**
+     * ✅ NORMALIZE PATIENT FIELD
+     * Sometimes appointment.patient is a string (patientId)
+     * We fetch all needed patients once, build a map, and replace strings with objects.
+     */
+
+    // 1) collect patient IDs (only those that are strings)
+    const patientIds = appointmentDocs
+      .map((a) => (typeof a.patient === "string" ? a.patient : a.patient?.$id))
+      .filter(Boolean) as string[];
+
+    // 2) fetch patients in ONE query (if we have any)
+    let patientMap = new Map<string, Patient>();
+
+    if (patientIds.length > 0) {
+      const patientsRes = await databases.listDocuments(
+        DATABASE_ID!,
+        PATIENT_TABLE_ID!,
+        [Query.equal("$id", patientIds)]
+      );
+
+      patientsRes.documents.forEach((p) => {
+        const patientDoc = p as unknown as Patient;
+        patientMap.set(patientDoc.$id, patientDoc);
+      });
+    }
+
+    // 3) normalize appointments so patient is always an object with name
+    const normalizedAppointments = appointmentDocs.map((a) => {
+      if (typeof a.patient === "string") {
+        const p = patientMap.get(a.patient);
+
+        return {
+          ...a,
+          patient:
+            p ??
+            ({
+              $id: a.patient,
+              name: "Unknown",
+            } as any),
+        };
+      }
+
+      return a;
+    });
+
     const data = {
       totalCount: appointments.total,
       ...counts,
-      documents: appointments.documents,
+      documents: normalizedAppointments, // ✅ IMPORTANT: use normalized
     };
 
     return parseStringify(data);
@@ -85,12 +132,7 @@ export const getRecentAppointmentList = async () => {
 //  SEND SMS NOTIFICATION
 export const sendSMSNotification = async (userId: string, content: string) => {
   try {
-    const message = await messaging.createSms(
-      ID.unique(),
-      content,
-      [],
-      [userId]
-    );
+    const message = await messaging.createSms(ID.unique(), content, [], [userId]);
     return parseStringify(message);
   } catch (error) {
     console.error("An error occurred while sending sms:", error);
@@ -124,9 +166,7 @@ export const updateAppointment = async ({
         : `We regret to inform that your appointment for ${formatDateTime(
             appointment.schedule!,
             timeZone
-          ).dateTime} is cancelled. Reason:  ${
-            appointment.cancellationReason
-          }`
+          ).dateTime} is cancelled. Reason:  ${appointment.cancellationReason}`
     }.`;
 
     await sendSMSNotification(userId, smsMessage);

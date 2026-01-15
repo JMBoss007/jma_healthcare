@@ -18,13 +18,24 @@ export const columns: ColumnDef<Appointment>[] = [
     },
   },
   {
-    accessorKey: "patient",
-    header: "Patient",
-    cell: ({ row }) => {
-      const appointment = row.original;
-      return <p className="text-14-medium ">{appointment.patient.name}</p>;
-    },
+  accessorKey: "patient",
+  header: "Client Name",
+  cell: ({ row }) => {
+    const appointment = row.original;
+
+    const patientName =
+      typeof appointment.patient === "string"
+        ? appointment.patient // fallback: shows ID
+        : appointment.patient?.name ?? "Unknown";
+
+    return (
+      <p className="text-14-medium min-w-[160px] whitespace-nowrap">
+        {patientName}
+      </p>
+    );
   },
+},
+
   {
     accessorKey: "status",
     header: "Status",
@@ -51,7 +62,7 @@ export const columns: ColumnDef<Appointment>[] = [
   },
   {
     accessorKey: "primaryPhysician",
-    header: "Doctor",
+    header: "Service",
     cell: ({ row }) => {
       const appointment = row.original;
 
@@ -61,14 +72,7 @@ export const columns: ColumnDef<Appointment>[] = [
 
       return (
         <div className="flex items-center gap-3">
-          <Image
-            src={doctor?.image!}
-            alt="doctor"
-            width={100}
-            height={100}
-            className="size-8"
-          />
-          <p className="whitespace-nowrap">Dr. {doctor?.name}</p>
+          <p className="whitespace-nowrap">{doctor?.name}</p>
         </div>
       );
     },
@@ -82,7 +86,11 @@ export const columns: ColumnDef<Appointment>[] = [
       return (
         <div className="flex gap-1">
           <AppointmentModal
-            patientId={appointment.patient.$id}
+            patientId={
+  typeof appointment.patient === "string"
+    ? appointment.patient
+    : appointment.patient?.$id ?? ""
+}
             userId={appointment.userId}
             appointment={appointment}
             type="schedule"
@@ -90,7 +98,11 @@ export const columns: ColumnDef<Appointment>[] = [
             description="Please confirm the following details to schedule."
           />
           <AppointmentModal
-            patientId={appointment.patient.$id}
+            patientId={
+  typeof appointment.patient === "string"
+    ? appointment.patient
+    : appointment.patient?.$id ?? ""
+}
             userId={appointment.userId}
             appointment={appointment}
             type="cancel"
