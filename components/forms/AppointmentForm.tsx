@@ -181,7 +181,7 @@ export const AppointmentForm = ({
                 fieldType={FormFieldType.TEXTAREA}
                 control={form.control}
                 name="reason"
-                label="Appointment reason"
+                label="Client's Appointment reason"
                 placeholder="I have an issue or request for..."
                 disabled={type === "schedule"}
               />
@@ -190,9 +190,9 @@ export const AppointmentForm = ({
                 fieldType={FormFieldType.TEXTAREA}
                 control={form.control}
                 name="note"
-                label="Comments/notes"
+                label="Your Comments/notes"
                 placeholder="Prefer afternoon appointments, if possible"
-                disabled={type === "schedule"}
+                disabled={false}
               />
             </div>
           </>

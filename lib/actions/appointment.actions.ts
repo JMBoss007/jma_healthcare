@@ -157,16 +157,16 @@ export const updateAppointment = async ({
 
     if (!updatedAppointment) throw Error;
 
-    const smsMessage = `Greetings from Jason. ${
-      type === "schedule"
+    const smsMessage = `Greetings from JMAX Technical Services!${
+      type === 'schedule'
         ? `Your appointment is confirmed for ${formatDateTime(
             appointment.schedule!,
             timeZone
-          ).dateTime} with Dr. ${appointment.primaryPhysician}`
+          ).dateTime} as per your requested service of ${appointment.primaryPhysician}`
         : `We regret to inform that your appointment for ${formatDateTime(
             appointment.schedule!,
             timeZone
-          ).dateTime} is cancelled. Reason:  ${appointment.cancellationReason}`
+          ).dateTime} is cancelled for the following reason:  ${appointment.cancellationReason}`
     }.`;
 
     await sendSMSNotification(userId, smsMessage);
