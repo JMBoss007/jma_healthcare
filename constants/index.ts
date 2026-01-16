@@ -27,9 +27,9 @@ export const PatientFormDefaultValues = {
 };
 
 export const IdentificationTypes = [
-  "Vehicle Damage Photo",
   "Laptop Damage Photo",
   "Website Logo",
+  "VIN Document (To purchase particular parts)",
 ];
 
 export const Doctors = [
