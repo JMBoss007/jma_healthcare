@@ -11,25 +11,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Appointment } from "@/types/appwrite.types";
 
+import { Appointment } from "@/types/appwrite.types";
 import { AppointmentForm } from "./forms/AppointmentForm";
 
 import "react-datepicker/dist/react-datepicker.css";
 
-export const AppointmentModal = ({
-  patientId,
-  userId,
-  appointment,
-  type,
-}: {
+type AppointmentModalProps = {
   patientId: string;
   userId: string;
   appointment?: Appointment;
   type: "schedule" | "cancel";
   title: string;
   description: string;
-}) => {
+};
+
+export const AppointmentModal = ({
+  patientId,
+  userId,
+  appointment,
+  type,
+  title,
+  description,
+}: AppointmentModalProps) => {
   const [open, setOpen] = useState(false);
 
   return (
@@ -37,17 +41,16 @@ export const AppointmentModal = ({
       <DialogTrigger asChild>
         <Button
           variant="ghost"
-          className={`capitalize ${type === "schedule" && "text-green-500"}`}
+          className={`capitalize ${type === "schedule" ? "text-green-500" : ""}`}
         >
           {type}
         </Button>
       </DialogTrigger>
+
       <DialogContent className="shad-dialog sm:max-w-md">
         <DialogHeader className="mb-4 space-y-3">
-          <DialogTitle className="capitalize">{type} Appointment</DialogTitle>
-          <DialogDescription>
-            Please fill in the following details to {type} appointment
-          </DialogDescription>
+          <DialogTitle className="capitalize">{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <AppointmentForm

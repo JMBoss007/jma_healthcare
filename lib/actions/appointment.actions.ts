@@ -4,18 +4,16 @@ import { revalidatePath } from "next/cache";
 import { ID, Query } from "node-appwrite";
 
 import { Appointment, Patient } from "@/types/appwrite.types";
-
 import {
   APPOINTMENT_TABLE_ID,
   DATABASE_ID,
   PATIENT_TABLE_ID,
   databases,
   messaging,
-} from "../appwrite.config";
-
+} from "../appwrite.server";
 import { formatDateTime, parseStringify } from "../utils";
 
-//  CREATE APPOINTMENT
+// CREATE APPOINTMENT
 export const createAppointment = async (appointment: CreateAppointmentParams) => {
   try {
     const newAppointment = await databases.createDocument(
@@ -28,11 +26,12 @@ export const createAppointment = async (appointment: CreateAppointmentParams) =>
     revalidatePath("/admin");
     return parseStringify(newAppointment);
   } catch (error) {
-    console.error("An error occurred while creating a new appointment:", error);
+    console.error("createAppointment error:", error);
+    throw error;
   }
 };
 
-//  GET RECENT APPOINTMENTS
+// GET RECENT APPOINTMENTS (hydrate patient)
 export const getRecentAppointmentList = async () => {
   try {
     const appointments = await databases.listDocuments(
@@ -41,18 +40,17 @@ export const getRecentAppointmentList = async () => {
       [Query.orderDesc("$createdAt")]
     );
 
+    const appointmentDocs = appointments.documents.map(
+      (doc) => doc as unknown as Appointment
+    );
+
+    // counts
     const initialCounts = {
       scheduledCount: 0,
       pendingCount: 0,
       cancelledCount: 0,
     };
 
-    // Cast docs
-    const appointmentDocs = appointments.documents.map(
-      (doc) => doc as unknown as Appointment
-    );
-
-    // Counts (your existing logic)
     const counts = appointmentDocs.reduce((acc, appointment) => {
       switch (appointment.status) {
         case "scheduled":
@@ -69,20 +67,24 @@ export const getRecentAppointmentList = async () => {
     }, initialCounts);
 
     /**
-     * ✅ NORMALIZE PATIENT FIELD
-     * Sometimes appointment.patient is a string (patientId)
-     * We fetch all needed patients once, build a map, and replace strings with objects.
+     * Normalize patient so UI can safely show patient.name
+     * If appointment.patient is an ID string -> fetch matching patient documents and replace.
      */
 
-    // 1) collect patient IDs (only those that are strings)
-    const patientIds = appointmentDocs
-      .map((a) => (typeof a.patient === "string" ? a.patient : a.patient?.$id))
-      .filter(Boolean) as string[];
+    const patientIds = Array.from(
+      new Set(
+        appointmentDocs
+          .map((a) =>
+            typeof a.patient === "string" ? a.patient : a.patient?.$id
+          )
+          .filter(Boolean) as string[]
+      )
+    );
 
-    // 2) fetch patients in ONE query (if we have any)
-    let patientMap = new Map<string, Patient>();
+    const patientMap = new Map<string, Patient>();
 
     if (patientIds.length > 0) {
+      // NOTE: Query.equal("$id", [...]) is the correct way to fetch many IDs in Appwrite
       const patientsRes = await databases.listDocuments(
         DATABASE_ID!,
         PATIENT_TABLE_ID!,
@@ -95,8 +97,7 @@ export const getRecentAppointmentList = async () => {
       });
     }
 
-    // 3) normalize appointments so patient is always an object with name
-    const normalizedAppointments = appointmentDocs.map((a) => {
+    const normalizedAppointments: Appointment[] = appointmentDocs.map((a) => {
       if (typeof a.patient === "string") {
         const p = patientMap.get(a.patient);
 
@@ -106,40 +107,41 @@ export const getRecentAppointmentList = async () => {
             p ??
             ({
               $id: a.patient,
-              name: "Unknown",
-            } as any),
+              name: a.patient, // fallback: show ID if missing
+            } as unknown as Patient),
         };
       }
 
+      // if already object, keep as-is
       return a;
     });
 
     const data = {
       totalCount: appointments.total,
       ...counts,
-      documents: normalizedAppointments, // ✅ IMPORTANT: use normalized
+      documents: normalizedAppointments,
     };
 
     return parseStringify(data);
   } catch (error) {
-    console.error(
-      "An error occurred while retrieving the recent appointments:",
-      error
-    );
+    console.error("getRecentAppointmentList error:", error);
+    throw error;
   }
 };
 
-//  SEND SMS NOTIFICATION
+// SEND SMS NOTIFICATION
 export const sendSMSNotification = async (userId: string, content: string) => {
   try {
     const message = await messaging.createSms(ID.unique(), content, [], [userId]);
     return parseStringify(message);
   } catch (error) {
-    console.error("An error occurred while sending sms:", error);
+    console.error("sendSMSNotification error:", error);
+    // Don't break the app if SMS fails
+    return null;
   }
 };
 
-//  UPDATE APPOINTMENT
+// UPDATE APPOINTMENT
 export const updateAppointment = async ({
   appointmentId,
   userId,
@@ -155,26 +157,23 @@ export const updateAppointment = async ({
       appointment
     );
 
-    if (!updatedAppointment) throw Error;
-
-    const smsMessage = `Greetings from JMAX Technical Services!${
-      type === 'schedule'
-        ? `Your appointment is confirmed for ${formatDateTime(
-            appointment.schedule!,
-            timeZone
-          ).dateTime} as per your requested service of ${appointment.primaryPhysician}`
-        : `We regret to inform that your appointment for ${formatDateTime(
-            appointment.schedule!,
-            timeZone
-          ).dateTime} is cancelled for the following reason:  ${appointment.cancellationReason}`
-    }.`;
+    const smsMessage = `Greetings from JMAX Technical Services! ${
+      type === "schedule"
+        ? `Your appointment is confirmed for ${
+            formatDateTime(appointment.schedule!, timeZone).dateTime
+          } as per your requested service of ${appointment.primaryPhysician}.`
+        : `We regret to inform that your appointment for ${
+            formatDateTime(appointment.schedule!, timeZone).dateTime
+          } is cancelled for the following reason: ${appointment.cancellationReason}.`
+    }`;
 
     await sendSMSNotification(userId, smsMessage);
 
     revalidatePath("/admin");
     return parseStringify(updatedAppointment);
   } catch (error) {
-    console.error("An error occurred while scheduling an appointment:", error);
+    console.error("updateAppointment error:", error);
+    throw error;
   }
 };
 
@@ -189,9 +188,7 @@ export const getAppointment = async (appointmentId: string) => {
 
     return parseStringify(appointment);
   } catch (error) {
-    console.error(
-      "An error occurred while retrieving the existing patient:",
-      error
-    );
+    console.error("getAppointment error:", error);
+    throw error;
   }
 };
