@@ -1,30 +1,60 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 
 import { Button } from "@/components/ui/button";
 import { Doctors } from "@/constants";
 import { getAppointment } from "@/lib/actions/appointment.actions";
+import { getUser } from "@/lib/actions/patient.actions";
 import { formatDateTime } from "@/lib/utils";
 
-import * as Sentry from '@sentry/nextjs'
-import { getUser } from "@/lib/actions/patient.actions";
+type PageProps = {
+  params: Promise<{ userId: string }>;
+  searchParams?: Promise<{ appointmentId?: string }>;
+};
 
-const RequestSuccess = async ({
-  searchParams,
-  params: { userId },
-}: SearchParamProps) => {
-  const appointmentId = (searchParams?.appointmentId as string) || "";
+const RequestSuccess = async ({ params, searchParams }: PageProps) => {
+  // ✅ Next 16: params/searchParams are Promises
+  const { userId } = await params;
+  const sp = searchParams ? await searchParams : {};
+  const appointmentId = sp?.appointmentId ?? "";
+
+  if (!userId) {
+    Sentry.captureMessage("success_missing_userId");
+    redirect("/");
+  }
+
+  if (!appointmentId) {
+    Sentry.captureMessage("success_missing_appointmentId", {
+      level: "warning",
+      extra: { userId },
+    });
+    redirect(`/patients/${userId}/new-appointment`);
+  }
+
   const appointment = await getAppointment(appointmentId);
 
-  const doctor = Doctors.find(
-    (doctor) => doctor.name === appointment.primaryPhysician
-  );
+  if (!appointment) {
+    Sentry.captureMessage("success_appointment_not_found", {
+      level: "warning",
+      extra: { userId, appointmentId },
+    });
+    redirect(`/patients/${userId}/new-appointment`);
+  }
+
+  const doctor = Doctors.find((d) => d.name === appointment.primaryPhysician);
+
   const user = await getUser(userId);
 
-  Sentry.captureMessage("user_view_appointment-success", user.name);
+  // ✅ Never crash if user missing
+  Sentry.captureMessage("user_view_appointment_success", {
+    level: "info",
+    extra: { userId, appointmentId, userName: user?.name ?? null },
+  });
 
   return (
-    <div className=" flex h-screen max-h-screen px-[5%]">
+    <div className="flex h-screen max-h-screen px-[5%]">
       <div className="success-img">
         <Link href="/">
           <Image
@@ -53,9 +83,9 @@ const RequestSuccess = async ({
         <section className="request-details">
           <p>Requested appointment details: </p>
           <div className="flex items-center gap-3">
-            For
-            <p className="whitespace-nowrap">{doctor?.name}</p>
+            For <p className="whitespace-nowrap">{doctor?.name ?? "Service"}</p>
           </div>
+
           <div className="flex gap-2">
             <Image
               src="/assets/icons/calendar.svg"
@@ -68,12 +98,10 @@ const RequestSuccess = async ({
         </section>
 
         <Button variant="outline" className="shad-primary-btn" asChild>
-          <Link href={`/patients/${userId}/new-appointment`}>
-            New Appointment
-          </Link>
+          <Link href={`/patients/${userId}/new-appointment`}>New Appointment</Link>
         </Button>
 
-        <p className="copyright">© 2026 JMAX Technical Services</p>
+        <p className="copyright">© 2026 JMAX Technical Services Registration</p>
       </div>
     </div>
   );

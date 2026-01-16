@@ -82,7 +82,7 @@ export const registerPatient = async ({
       {
         identificationDocumentId: file?.$id ? file.$id : null,
         identificationDocumentUrl: file?.$id
-          ? `${ENDPOINT}/storage/buckets/${BUCKET_ID}/files/${file.$id}/view??project=${PROJECT_ID}`
+          ? `${ENDPOINT}/storage/buckets/${BUCKET_ID}/files/${file.$id}/view?project=${PROJECT_ID}`
           : null,
         ...patient,
       }
@@ -95,19 +95,22 @@ export const registerPatient = async ({
 };
 
 // GET PATIENT
+// lib/actions/patient.actions.ts
 export const getPatient = async (userId: string) => {
   try {
+    if (!userId) return null;
+
     const patients = await databases.listDocuments(
       DATABASE_ID!,
       PATIENT_TABLE_ID!,
       [Query.equal("userId", [userId])]
     );
 
-    return parseStringify(patients.documents[0]);
+    const doc = patients.documents?.[0] ?? null;
+    return parseStringify(doc);
   } catch (error) {
-    console.error(
-      "An error occurred while retrieving the patient details:",
-      error
-    );
+    console.error("An error occurred while retrieving the patient details:", error);
+    return null;
   }
 };
+

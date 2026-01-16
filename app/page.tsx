@@ -19,7 +19,7 @@ const Home = async ({ searchParams }: { searchParams: Promise<{ [key: string]: s
 
           <div className="text-14-regular mt-20 flex justify-between">
             <p className="justify-items-end text-dark-600 xl:text-left">
-              © 2026 JMAX Technical Services
+              © 2026 JMAX Technical Services Registration
             </p>
             <Link href="/?admin=true" className="text-green-500">
               Admin
